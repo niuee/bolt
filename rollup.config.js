@@ -29,7 +29,7 @@ export default [{
 },
 {
     input: "src/index.ts",
-    output: [{ file: "dist/types.d.ts", format: "es" }],
+    output: [{ file: "build/types.d.ts", format: "es" }],
     plugins: [dts.default()],
   } 
 ];
