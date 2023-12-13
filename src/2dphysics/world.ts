@@ -40,8 +40,8 @@ export class World {
             rigidBodyList.push(body);
             this.quadTree.insert(body);
         });
-        let possibleCombinations = Collision.broadPhase(this.quadTree, rigidBodyList);
-        Collision.narrowPhase(rigidBodyList, possibleCombinations, this.resolveCollision);
+        let possibleCombinations = Collision.broadPhaseWithRigidBodyReturned(this.quadTree, rigidBodyList);
+        Collision.narrowPhaseWithRigidBody(rigidBodyList, possibleCombinations, this.resolveCollision);
         rigidBodyList.forEach(rigidBody => {
             rigidBody.step(deltaTime);
         })

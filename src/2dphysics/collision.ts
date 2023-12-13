@@ -91,7 +91,6 @@ export class Collision {
             let bodyB = combination.bodyB;
             let {collision, depth, normal: normalAxis} = this.intersects(bodyA, bodyB);
             if (collision && normalAxis !== undefined && depth !== undefined) {
-                // console.log("collision");
                 let moveDisplacement = PointCal.multiplyVectorByScalar(normalAxis, depth / 2);
                 let revMoveDisplacement = PointCal.multiplyVectorByScalar(normalAxis, -depth / 2);
 
@@ -162,11 +161,11 @@ export class Collision {
     }
 
     static resolveCollision(bodyA: RigidBody, bodyB: RigidBody, normal: point): void {
+        // console.log("resolve");
         if (bodyA.isStatic() && bodyB.isStatic()) {
             return;
         }
         let restitution = 0.4;
-
         let inverseMassA = bodyA.isStatic() || bodyA.isMovingStatic() ? 0 : 1 / bodyA.getMass();
         let inverseMassB = bodyB.isStatic() || bodyB.isMovingStatic() ? 0 : 1 / bodyB.getMass();
         // console.log("inverse mass a", inverseMassA);
