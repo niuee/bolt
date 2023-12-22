@@ -11,20 +11,20 @@ export default [{
   output: [{
     file: packageJson.main,
     format: 'cjs',
-    name: 'YourLibrary',
     sourcemap: true,
   },  
   {
     file: packageJson.module,
     format: 'esm',
-    name: 'YourLibrary',
     sourcemap: true,
   }
   ],
   plugins: [
     typescript(),
     resolve(),
-    terser(),
+    terser({
+      mangle: false
+    }),
   ],
 },
 {
