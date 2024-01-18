@@ -4,6 +4,8 @@ export interface RigidBody {
     center: Point;
     linearVelocity: Point;
     angularVelocity: number;
+    AABB: {min: Point, max: Point};
+    mass: number;
     step(deltaTime: number): void;
     isStatic(): boolean;
     isMovingStatic(): boolean;
@@ -11,10 +13,9 @@ export interface RigidBody {
     getCollisionAxes(relativeBody: RigidBody): Point[];
     applyForce(force: Point): void;
     applyForceInOrientation(force: Point): void;
-    getAABB(): {min: Point, max: Point};
-    getMass(): number;
     move(delta: Point): void;
     significantVertex(collisionNormal: Point): Point;
+    getSignificantVertices(collisionNormal: Point): Point[];
 }
 
 export interface VisualComponent{
@@ -26,9 +27,10 @@ export interface VisualComponent{
 export abstract class BaseRigidBody implements RigidBody{
     
     protected _center: Point;
-    protected orientationAngle: number = 0;
-    protected mass: number = 50;
+    protected _mass: number = 50;
     protected _linearVelocity: Point;
+    protected _angularVelocity: number; // in radians
+    protected orientationAngle: number = 0;
     protected linearAcceleartion: Point;
     protected force: Point;
     protected isStaticBody: boolean = false;
@@ -36,14 +38,13 @@ export abstract class BaseRigidBody implements RigidBody{
     protected dynamicFrictionCoeff: number = 0.3;
     protected frictionEnabled: boolean = false;
     protected isMovingStaticBody: boolean = false;
-    protected _angularVelocity: number; // in radians
-    protected angularDampingFactor: number = 0.001;
+    protected angularDampingFactor: number = 0.005;
     
 
     constructor(center: Point, orientationAngle: number = 0, mass: number = 50, isStaticBody: boolean = false, frictionEnabled: boolean = false){
         this._center = center;
         this.orientationAngle = orientationAngle;
-        this.mass = mass;
+        this._mass = mass;
         this.isStaticBody = isStaticBody;
         this.frictionEnabled = frictionEnabled;
         this.force = {x: 0, y: 0};
@@ -68,14 +69,6 @@ export abstract class BaseRigidBody implements RigidBody{
     
     getOrientationAngle(): number{
         return this.orientationAngle;
-    }
-
-    getMass(): number{
-        return this.mass;
-    }
-
-    getLinearVelocity(): Point{
-        return this.linearVelocity;
     }
 
     get angularVelocity(): number{
@@ -140,7 +133,7 @@ export abstract class BaseRigidBody implements RigidBody{
                 this.force = PointCal.addVector(this.force, kineticFriction);
             }
         }
-        const angularDamping = this._angularVelocity != 0 ? this._angularVelocity * (-1 / this._angularVelocity) * this.angularDampingFactor : 0;
+        const angularDamping = this._angularVelocity != 0 ? this._angularVelocity > 0 ? -this.angularDampingFactor : this.angularDampingFactor : 0;
         // console.log("angular velocity", this._angularVelocity);
         // console.log("angular damping", angularDamping);
         if (Math.abs(this._angularVelocity) < Math.abs(angularDamping)) {
@@ -173,43 +166,15 @@ export abstract class BaseRigidBody implements RigidBody{
         this._linearVelocity = dest;
     }
 
+    get mass(): number{
+        return this._mass;
+    }
+
     abstract getMinMaxProjection(unitvector: Point): {min: number, max: number};
     abstract getCollisionAxes(relativeBody: RigidBody): Point[];
-    abstract getAABB(): {min: Point, max: Point};
+    abstract get AABB(): {min: Point, max: Point};
     abstract significantVertex(collisionNormal: Point): Point;
-
-}
-
-export class Circle extends BaseRigidBody {
-
-    private _radius: number;
-    constructor(center: Point = {x: 0, y: 0}, radius: number, orientationAngle: number = 0, mass: number = 50, isStatic: boolean = false, frictionEnabled: boolean = true) {
-        super(center, orientationAngle, mass, isStatic, frictionEnabled);
-        this._radius = radius;
-        this.step = this.step.bind(this);
-    }
-
-    getMinMaxProjection(unitvector: Point): { min: number; max: number; } {
-        let PositiveFurthest = PointCal.addVector(this._center, PointCal.multiplyVectorByScalar(unitvector, this._radius));
-        let NegativeFurthest = PointCal.addVector(this._center, PointCal.multiplyVectorByScalar(unitvector, -this._radius));
-        return {min: PointCal.dotProduct(NegativeFurthest, unitvector), max: PointCal.dotProduct(PositiveFurthest, unitvector)};
-    }
-
-    getCollisionAxes(relativeBody: RigidBody): Point[] {
-        return [PointCal.unitVector(PointCal.subVector(relativeBody.center, this._center))];
-    }
-
-    getAABB(): { min: Point; max: Point; } {
-        return {min: PointCal.subVector(this._center, {x: this._radius, y: this._radius}), max: PointCal.addVector(this._center, {x: this._radius, y: this._radius})};
-    }
-
-    significantVertex(collisionNormal: Point): Point {
-        return PointCal.addVector(this._center, PointCal.multiplyVectorByScalar(collisionNormal, this._radius));
-    }
-
-    get radius(): number {
-        return this._radius;
-    }
+    abstract getSignificantVertices(collisionNormal: Point): Point[];
 }
 
 export class VisaulCircleBody implements VisualComponent, RigidBody {
@@ -253,28 +218,24 @@ export class VisaulCircleBody implements VisualComponent, RigidBody {
         this._circle.applyForce(force);
     }
 
-    getAABB(): { min: Point; max: Point; } {
-        return this._circle.getAABB();
+    get AABB(): { min: Point; max: Point; } {
+        return this._circle.AABB;
     }
 
     getMass(): number {
-        return this._circle.getMass();
-    }
-
-    getLinearVelocity(): Point {
-        return this._circle.getLinearVelocity();
+        return this._circle.mass;
     }
 
     applyForceInOrientation(force: Point): void {
         this._circle.applyForceInOrientation(force);
     }
 
-    setLinearVelocity(linearVelocity: Point): void {
-        this._circle.setLinearVelocity(linearVelocity);
-    }
-
     move(delta: Point): void {
         this._circle.move(delta);
+    }
+
+    getSignificantVertices(collisionNormal: Point): Point[] {
+        return this._circle.getSignificantVertices(collisionNormal);
     }
 
     get center(): Point {
@@ -304,6 +265,11 @@ export class VisaulCircleBody implements VisualComponent, RigidBody {
     get angularVelocity(): number{
         return this._circle.angularVelocity;
     }
+
+    get mass(): number{
+        return this._circle.mass;
+    }
+
 
 }
 
@@ -353,18 +319,6 @@ export class VisualPolygonBody implements VisualComponent, RigidBody {
         this._polygon.applyForce(force);
     }
 
-    getAABB(): { min: Point; max: Point; } {
-        return this._polygon.getAABB();
-    }
-
-    getMass(): number {
-        return this._polygon.getMass();
-    }
-
-    getLinearVelocity(): Point {
-        return this._polygon.getLinearVelocity();
-    }
-
     applyForceInOrientation(force: Point): void {
         this._polygon.applyForceInOrientation(force);
     }
@@ -405,6 +359,17 @@ export class VisualPolygonBody implements VisualComponent, RigidBody {
         return this._polygon.significantVertex(collisionNormal);
     }
 
+    getSignificantVertices(collisionNormal: Point): Point[] {
+        return this._polygon.getSignificantVertices(collisionNormal);
+    }
+
+    get AABB(): {min: Point, max: Point}{
+        return this._polygon.AABB;
+    }
+
+    get mass(): number{
+        return this._polygon.mass;
+    }
 }
 
 export class Polygon extends BaseRigidBody {
@@ -445,7 +410,7 @@ export class Polygon extends BaseRigidBody {
         return {min: Math.min(...projections), max: Math.max(...projections)};
     }
 
-    getAABB(): { min: Point; max: Point; } {
+    get AABB(): { min: Point; max: Point; } {
         let points = this.getVerticesAbsCoord();
         let xCoords = points.map(vertex => vertex.x);
         let yCoords = points.map(vertex => vertex.y);
@@ -459,4 +424,58 @@ export class Polygon extends BaseRigidBody {
         return vertices[maxIndex];
     }
 
+    getSignificantVertices(collisionNormal: Point): Point[]{
+        let vertices = this.getVerticesAbsCoord();
+        let verticesProjected = vertices.map(vertex => PointCal.dotProduct(vertex, collisionNormal));
+        let maxIndex = verticesProjected.indexOf(Math.max(...verticesProjected));
+        const tipVertex = vertices[maxIndex];
+        let prevPointIndex = maxIndex > 0 ? maxIndex - 1 : vertices.length - 1;
+        let nextPointIndex = maxIndex < vertices.length - 1 ? maxIndex + 1 : 0;
+        const prevPoint = vertices[prevPointIndex];
+        const nextPoint = vertices[nextPointIndex];
+        const prevPointProjected = PointCal.dotProduct(prevPoint, collisionNormal);
+        const nextPointProjected = PointCal.dotProduct(nextPoint, collisionNormal);
+        if (prevPointProjected > nextPointProjected) {
+            return [tipVertex, prevPoint];
+        } else {
+            return [tipVertex, nextPoint];
+        }
+    }
+
+}
+
+export class Circle extends BaseRigidBody {
+
+    private _radius: number;
+    constructor(center: Point = {x: 0, y: 0}, radius: number, orientationAngle: number = 0, mass: number = 50, isStatic: boolean = false, frictionEnabled: boolean = true) {
+        super(center, orientationAngle, mass, isStatic, frictionEnabled);
+        this._radius = radius;
+        this.step = this.step.bind(this);
+    }
+
+    getMinMaxProjection(unitvector: Point): { min: number; max: number; } {
+        let PositiveFurthest = PointCal.addVector(this._center, PointCal.multiplyVectorByScalar(unitvector, this._radius));
+        let NegativeFurthest = PointCal.addVector(this._center, PointCal.multiplyVectorByScalar(unitvector, -this._radius));
+        return {min: PointCal.dotProduct(NegativeFurthest, unitvector), max: PointCal.dotProduct(PositiveFurthest, unitvector)};
+    }
+
+    getCollisionAxes(relativeBody: RigidBody): Point[] {
+        return [PointCal.unitVector(PointCal.subVector(relativeBody.center, this._center))];
+    }
+
+    get AABB(): { min: Point; max: Point; } {
+        return {min: PointCal.subVector(this._center, {x: this._radius, y: this._radius}), max: PointCal.addVector(this._center, {x: this._radius, y: this._radius})};
+    }
+
+    significantVertex(collisionNormal: Point): Point {
+        return PointCal.addVector(this._center, PointCal.multiplyVectorByScalar(collisionNormal, this._radius));
+    }
+
+    get radius(): number {
+        return this._radius;
+    }
+
+    getSignificantVertices(collisionNormal: Point): Point[]{
+        return [PointCal.addVector(this._center, PointCal.multiplyVectorByScalar(collisionNormal, this._radius))];
+    }
 }

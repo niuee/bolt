@@ -18,7 +18,7 @@ export class Collision {
                 if (bodyA.isStatic() && bodyB.isStatic()){
                     continue;
                 }
-                if(!this.aabbIntersects(bodyA.getAABB(), bodyB.getAABB())){
+                if(!this.aabbIntersects(bodyA.AABB, bodyB.AABB)){
                     continue;
                 }
                 possibleCombi.push({bodyAIndex: index, bodyBIndex: jindex});
@@ -37,7 +37,7 @@ export class Collision {
                 if (bodyA.isStatic() && bodyB.isStatic()){
                     continue;
                 }
-                if(!this.aabbIntersects(bodyA.getAABB(), bodyB.getAABB())){
+                if(!this.aabbIntersects(bodyA.AABB, bodyB.AABB)){
                     continue;
                 }
                 possibleCombi.push({bodyA: bodyA, bodyB: bodyB});
@@ -168,8 +168,8 @@ export class Collision {
             return;
         }
         let restitution = 0.4;
-        let inverseMassA = bodyA.isStatic() || bodyA.isMovingStatic() ? 0 : 1 / bodyA.getMass();
-        let inverseMassB = bodyB.isStatic() || bodyB.isMovingStatic() ? 0 : 1 / bodyB.getMass();
+        let inverseMassA = bodyA.isStatic() || bodyA.isMovingStatic() ? 0 : 1 / bodyA.mass;
+        let inverseMassB = bodyB.isStatic() || bodyB.isMovingStatic() ? 0 : 1 / bodyB.mass;
         // console.log("inverse mass a", inverseMassA);
         // console.log("inverse mass b", inverseMassB);
 

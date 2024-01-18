@@ -66,7 +66,7 @@ export class QuadTree {
 
     getIndex(vBody: RigidBody){
         let midPoint = {x: this.bounds.getbottomLeft().x + this.bounds.getWidth() / 2, y: this.bounds.getbottomLeft().y + this.bounds.getHeight() / 2};
-        let points = vBody.getAABB();
+        let points = vBody.AABB;
         let bottom = points.max.y < midPoint.y;
         let left = points.max.x < midPoint.x;
         if (bottom){
