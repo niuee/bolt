@@ -3,8 +3,8 @@ import { Collision } from "./collision";
 import { RectangleBound, QuadTree} from "./quadtree"
 
 export class World {
-    private rigidBodyList: BaseRigidBody[];
-    private rigidBodyMap: Map<string, BaseRigidBody>;
+    private rigidBodyList: RigidBody[];
+    private rigidBodyMap: Map<string, RigidBody>;
     private resolveCollision: boolean;
     private maxTransWidth: number;
     private maxTransHeight: number;
@@ -17,11 +17,11 @@ export class World {
         this.bound = new RectangleBound({x: -this.maxTransWidth, y: -this.maxTransHeight}, 2 * this.maxTransWidth, 2 * this.maxTransHeight);
         this.quadTree = new QuadTree(0, this.bound);
         this.rigidBodyList = [];
-        this.rigidBodyMap = new Map<string, BaseRigidBody>();
+        this.rigidBodyMap = new Map<string, RigidBody>();
         this.resolveCollision = true;
     }
 
-    addRigidBody(ident: string, body: BaseRigidBody): void{
+    addRigidBody(ident: string, body: RigidBody): void{
         this.rigidBodyList.push(body);
         this.rigidBodyMap.set(ident, body);
     }
@@ -34,7 +34,7 @@ export class World {
 
     step(deltaTime: number): void{
         // console.log("stepping in world");
-        let rigidBodyList: BaseRigidBody[] = [];
+        let rigidBodyList: RigidBody[] = [];
         this.quadTree.clear();
         this.rigidBodyMap.forEach((body) => {
             rigidBodyList.push(body);
@@ -48,14 +48,14 @@ export class World {
     }
 
     getRigidBodyList(){
-        let rigidBodyList:BaseRigidBody[] = [];
+        let rigidBodyList:RigidBody[] = [];
         this.rigidBodyMap.forEach((body) => {
             rigidBodyList.push(body);
         })
         return rigidBodyList;
     }
 
-    getRigidBodyMap(): Map<string, BaseRigidBody>{
+    getRigidBodyMap(): Map<string, RigidBody>{
         return this.rigidBodyMap;
     }
 

@@ -82,7 +82,7 @@ export class Collision {
         })
     }
 
-    static narrowPhaseWithRigidBody(bodies: BaseRigidBody[], combinationsToCheck: {bodyA: RigidBody, bodyB: RigidBody}[], resolveCollision: boolean): void {
+    static narrowPhaseWithRigidBody(bodies: RigidBody[], combinationsToCheck: {bodyA: RigidBody, bodyB: RigidBody}[], resolveCollision: boolean): void {
         if (!resolveCollision) {
             return;
         }
@@ -91,6 +91,8 @@ export class Collision {
             let bodyB = combination.bodyB;
             let {collision, depth, normal: normalAxis} = this.intersects(bodyA, bodyB);
             if (collision && normalAxis !== undefined && depth !== undefined) {
+                // the normal axis points in the direction that push bodyA away from bodyB
+                
                 let moveDisplacement = PointCal.multiplyVectorByScalar(normalAxis, depth / 2);
                 let revMoveDisplacement = PointCal.multiplyVectorByScalar(normalAxis, -depth / 2);
 
@@ -171,7 +173,7 @@ export class Collision {
         // console.log("inverse mass a", inverseMassA);
         // console.log("inverse mass b", inverseMassB);
 
-        let relativeVelocity = PointCal.subVector(bodyA.getLinearVelocity(), bodyB.getLinearVelocity());
+        let relativeVelocity = PointCal.subVector(bodyA.linearVelocity, bodyB.linearVelocity);
         // console.log("relative velocity: ", relativeVelocity);
         // console.log("linear velocity of a", bodyA.getLinearVelocity());
         // console.log("linear veolcity of b", bodyB.getLinearVelocity());
@@ -183,7 +185,7 @@ export class Collision {
         // console.log("delta velocity A:", deltaVelocityA);
         // console.log("delta velocity B:", deltaVelocityB);
 
-        bodyA.setLinearVelocity(PointCal.addVector(bodyA.getLinearVelocity(), deltaVelocityA));
-        bodyB.setLinearVelocity(PointCal.subVector(bodyB.getLinearVelocity(), deltaVelocityB));
+        bodyA.linearVelocity = PointCal.addVector(bodyA.linearVelocity, deltaVelocityA);
+        bodyB.linearVelocity = PointCal.subVector(bodyB.linearVelocity, deltaVelocityB);
     }
 }
