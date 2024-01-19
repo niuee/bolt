@@ -1,7 +1,7 @@
 import { BaseRigidBody, RigidBody } from "./rigidbody";
-import { Collision } from "./collision";
+import * as Collision from "./collision";
 import { RectangleBound, QuadTree} from "./quadtree"
-
+import { Point } from "point2point";
 export class World {
     private rigidBodyList: RigidBody[];
     private rigidBodyMap: Map<string, RigidBody>;
@@ -10,6 +10,7 @@ export class World {
     private maxTransHeight: number;
     private bound: RectangleBound;
     private quadTree: QuadTree;
+    _context: CanvasRenderingContext2D | null = null;
 
     constructor(maxTransWidth: number, maxTransHeight: number){
         this.maxTransHeight = maxTransHeight;
@@ -41,7 +42,19 @@ export class World {
             this.quadTree.insert(body);
         });
         let possibleCombinations = Collision.broadPhaseWithRigidBodyReturned(this.quadTree, rigidBodyList);
-        Collision.narrowPhaseWithRigidBody(rigidBodyList, possibleCombinations, this.resolveCollision);
+        let contactPoints = Collision.narrowPhaseWithRigidBody(rigidBodyList, possibleCombinations, this.resolveCollision);
+        
+        if(this._context != null){
+            contactPoints.forEach((contactPoint) => {
+                if(this._context != null){
+                    this._context.lineWidth = 1;
+                    this._context.strokeStyle = "red";
+                }
+                this._context?.beginPath();
+                this._context?.arc(contactPoint.x, -contactPoint.y, 3, 0, 2 * Math.PI);
+                this._context?.stroke();
+            });
+        }
         rigidBodyList.forEach(rigidBody => {
             rigidBody.step(deltaTime);
         })

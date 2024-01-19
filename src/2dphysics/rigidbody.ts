@@ -6,6 +6,7 @@ export interface RigidBody {
     angularVelocity: number;
     AABB: {min: Point, max: Point};
     mass: number;
+    staticFrictionCoeff: number;
     step(deltaTime: number): void;
     isStatic(): boolean;
     isMovingStatic(): boolean;
@@ -16,13 +17,13 @@ export interface RigidBody {
     move(delta: Point): void;
     significantVertex(collisionNormal: Point): Point;
     getSignificantVertices(collisionNormal: Point): Point[];
+    getNormalOfSignificantFace(collisionNormal: Point): Point;
+    getAdjacentFaces(collisionNormal: Point): {startPoint: {coord: Point, index: number}, endPoint: {coord: Point, index: number}}[];
 }
 
 export interface VisualComponent{
     draw(ctx: CanvasRenderingContext2D): void;
 }
-
-
 
 export abstract class BaseRigidBody implements RigidBody{
     
@@ -34,7 +35,7 @@ export abstract class BaseRigidBody implements RigidBody{
     protected linearAcceleartion: Point;
     protected force: Point;
     protected isStaticBody: boolean = false;
-    protected staticFrictionCoeff: number = 0.3;
+    protected _staticFrictionCoeff: number = 0.3;
     protected dynamicFrictionCoeff: number = 0.3;
     protected frictionEnabled: boolean = false;
     protected isMovingStaticBody: boolean = false;
@@ -170,11 +171,21 @@ export abstract class BaseRigidBody implements RigidBody{
         return this._mass;
     }
 
+    get staticFrictionCoeff(): number{
+        return this._staticFrictionCoeff;
+    }
+
+    set staticFrictionCoeff(coeff: number){
+        this._staticFrictionCoeff = coeff;
+    }
+
     abstract getMinMaxProjection(unitvector: Point): {min: number, max: number};
     abstract getCollisionAxes(relativeBody: RigidBody): Point[];
     abstract get AABB(): {min: Point, max: Point};
     abstract significantVertex(collisionNormal: Point): Point;
     abstract getSignificantVertices(collisionNormal: Point): Point[];
+    abstract getNormalOfSignificantFace(collisionNormal: Point): Point;
+    abstract getAdjacentFaces(collisionNormal: Point): {startPoint: {coord: Point, index: number}, endPoint: {coord: Point, index: number}}[];
 }
 
 export class VisaulCircleBody implements VisualComponent, RigidBody {
@@ -270,6 +281,21 @@ export class VisaulCircleBody implements VisualComponent, RigidBody {
         return this._circle.mass;
     }
 
+    getNormalOfSignificantFace(collisionNormal: Point): Point {
+        return this._circle.getNormalOfSignificantFace(collisionNormal);
+    }
+
+    get staticFrictionCoeff(): number{
+        return this._circle.staticFrictionCoeff;
+    }
+
+    set staticFrictionCoeff(coeff: number){
+        this._circle.staticFrictionCoeff = coeff;
+    }
+
+    getAdjacentFaces(collisionNormal: Point): {startPoint: {coord: Point, index: number}, endPoint: {coord: Point, index: number}}[] {
+        return this._circle.getAdjacentFaces(collisionNormal);
+    }
 
 }
 
@@ -284,6 +310,8 @@ export class VisualPolygonBody implements VisualComponent, RigidBody {
     }
 
     draw(ctx: CanvasRenderingContext2D): void {
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 1;
         ctx.beginPath();
         let vertices = this._polygon.getVerticesAbsCoord();
         ctx.moveTo(vertices[0].x, -vertices[0].y);
@@ -370,6 +398,22 @@ export class VisualPolygonBody implements VisualComponent, RigidBody {
     get mass(): number{
         return this._polygon.mass;
     }
+    
+    get staticFrictionCoeff(): number{
+        return this._polygon.staticFrictionCoeff;
+    }
+
+    set staticFrictionCoeff(coeff: number){
+        this._polygon.staticFrictionCoeff = coeff;
+    }
+
+    getNormalOfSignificantFace(collisionNormal: Point): Point {
+        return this._polygon.getNormalOfSignificantFace(collisionNormal);
+    }
+
+    getAdjacentFaces(collisionNormal: Point): {startPoint: {coord: Point, index: number}, endPoint: {coord: Point, index: number}}[] {
+        return this._polygon.getAdjacentFaces(collisionNormal);
+    }
 }
 
 export class Polygon extends BaseRigidBody {
@@ -436,10 +480,53 @@ export class Polygon extends BaseRigidBody {
         const prevPointProjected = PointCal.dotProduct(prevPoint, collisionNormal);
         const nextPointProjected = PointCal.dotProduct(nextPoint, collisionNormal);
         if (prevPointProjected > nextPointProjected) {
-            return [tipVertex, prevPoint];
+            return [prevPoint, tipVertex];
         } else {
             return [tipVertex, nextPoint];
         }
+    }
+
+    getNormalOfSignificantFace(collisionNormal: Point): Point{
+        const vertices = this.getSignificantVertices(collisionNormal);
+        const direction = PointCal.unitVectorFromA2B(vertices[0], vertices[1]);
+        return PointCal.rotatePoint(direction, -Math.PI / 2);
+    }
+
+    getAdjacentFaces(collisionNormal: Point): {startPoint: {coord: Point, index: number}, endPoint: {coord: Point, index: number}}[]{
+        let vertices = this.getVerticesAbsCoord();
+        let verticesProjected = vertices.map(vertex => PointCal.dotProduct(vertex, collisionNormal));
+        let maxIndex = verticesProjected.indexOf(Math.max(...verticesProjected));
+        const tipVertex = vertices[maxIndex];
+        let prevPointIndex = maxIndex > 0 ? maxIndex - 1 : vertices.length - 1;
+        let nextPointIndex = maxIndex < vertices.length - 1 ? maxIndex + 1 : 0;
+        const prevPoint = vertices[prevPointIndex];
+        const nextPoint = vertices[nextPointIndex];
+        const prevPointProjected = PointCal.dotProduct(prevPoint, collisionNormal);
+        const nextPointProjected = PointCal.dotProduct(nextPoint, collisionNormal);
+        const adjacentFaces: Point[] = [];
+        const adjacentFacesWithIndex: {startPoint: {coord: Point, index: number}, endPoint: {coord: Point, index: number}}[] = [];
+        if (prevPointProjected > nextPointProjected) {
+            adjacentFaces.push(prevPoint, tipVertex);
+            adjacentFacesWithIndex.push({startPoint: {coord: prevPoint, index: prevPointIndex}, endPoint: {coord: tipVertex, index: maxIndex}});
+
+            // the nextface is the next face
+            adjacentFacesWithIndex.unshift({startPoint: {coord: tipVertex, index: maxIndex}, endPoint: {coord: nextPoint, index: nextPointIndex}});
+            // need to get the previous face of the previous face
+            let prevPrevPointIndex = prevPointIndex > 0 ? prevPointIndex - 1 : vertices.length - 1;
+            adjacentFacesWithIndex.unshift({startPoint: {coord: vertices[prevPrevPointIndex], index: prevPrevPointIndex}, endPoint: {coord: prevPoint, index: prevPointIndex}});
+        } else {
+            adjacentFaces.push(tipVertex, nextPoint);
+            adjacentFacesWithIndex.push({startPoint: {coord: tipVertex, index: maxIndex}, endPoint: {coord: nextPoint, index: nextPointIndex}});
+
+            // need to get the next face of the next face
+            let nextNextPointIndex = nextPointIndex < vertices.length - 1 ? nextPointIndex + 1 : 0;
+            adjacentFacesWithIndex.unshift({startPoint: {coord: nextPoint, index: nextPointIndex}, endPoint: {coord: vertices[nextNextPointIndex], index: nextNextPointIndex}})
+
+            // the prevoius face is the previous face
+            adjacentFacesWithIndex.unshift({startPoint: {coord: prevPoint, index: prevPointIndex}, endPoint: {coord: tipVertex, index: maxIndex}});
+        }
+        
+        return adjacentFacesWithIndex;
     }
 
 }
@@ -477,5 +564,13 @@ export class Circle extends BaseRigidBody {
 
     getSignificantVertices(collisionNormal: Point): Point[]{
         return [PointCal.addVector(this._center, PointCal.multiplyVectorByScalar(collisionNormal, this._radius))];
+    }
+
+    getNormalOfSignificantFace(collisionNormal: Point): Point{
+        return PointCal.unitVector(collisionNormal);
+    }
+
+    getAdjacentFaces(collisionNormal: Point): {startPoint: {coord: Point, index: number}, endPoint: {coord: Point, index: number}}[]{
+        return [];
     }
 }
