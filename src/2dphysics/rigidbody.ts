@@ -7,6 +7,7 @@ export interface RigidBody {
     AABB: {min: Point, max: Point};
     mass: number;
     staticFrictionCoeff: number;
+    momentOfInertia: number;
     step(deltaTime: number): void;
     isStatic(): boolean;
     isMovingStatic(): boolean;
@@ -179,6 +180,7 @@ export abstract class BaseRigidBody implements RigidBody{
         this._staticFrictionCoeff = coeff;
     }
 
+    abstract get momentOfInertia(): number;
     abstract getMinMaxProjection(unitvector: Point): {min: number, max: number};
     abstract getCollisionAxes(relativeBody: RigidBody): Point[];
     abstract get AABB(): {min: Point, max: Point};
@@ -199,6 +201,8 @@ export class VisaulCircleBody implements VisualComponent, RigidBody {
     }
 
     draw(ctx: CanvasRenderingContext2D): void {
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.arc(this._circle.center.x, -this._circle.center.y, this._circle.radius, 0, 2 * Math.PI);
         ctx.stroke();
@@ -295,6 +299,10 @@ export class VisaulCircleBody implements VisualComponent, RigidBody {
 
     getAdjacentFaces(collisionNormal: Point): {startPoint: {coord: Point, index: number}, endPoint: {coord: Point, index: number}}[] {
         return this._circle.getAdjacentFaces(collisionNormal);
+    }
+
+    get momentOfInertia(): number {
+        return this._circle.momentOfInertia;
     }
 
 }
@@ -407,6 +415,10 @@ export class VisualPolygonBody implements VisualComponent, RigidBody {
         this._polygon.staticFrictionCoeff = coeff;
     }
 
+    get momentOfInertia(): number {
+        return this._polygon.momentOfInertia;
+    }
+
     getNormalOfSignificantFace(collisionNormal: Point): Point {
         return this._polygon.getNormalOfSignificantFace(collisionNormal);
     }
@@ -419,11 +431,26 @@ export class VisualPolygonBody implements VisualComponent, RigidBody {
 export class Polygon extends BaseRigidBody {
 
     private vertices: Point[];
+    private _momentOfInertia: number;
 
     constructor(center: Point = {x: 0, y: 0}, vertices: Point[], orientationAngle: number = 0, mass: number = 50, isStatic: boolean = false, frictionEnabled: boolean = true) {
         super(center, orientationAngle, mass, isStatic, frictionEnabled);
         this.vertices = vertices;
         this.step = this.step.bind(this);
+
+        let numerator = this.vertices.reduce((acc, vertex, index) => {
+            let nextPointIndex = index < this.vertices.length - 1 ? index + 1 : 0;
+            let nextPoint = this.vertices[nextPointIndex];
+            let crossProduct = PointCal.crossProduct(nextPoint, vertex);
+            return acc + PointCal.magnitude(crossProduct) * (PointCal.dotProduct(vertex, vertex) + PointCal.dotProduct(vertex, nextPoint) + PointCal.dotProduct(nextPoint, nextPoint));
+        }, 0);
+
+        let denomiator = this.vertices.reduce((acc, vertex, index) => {
+            return acc + PointCal.magnitude(PointCal.crossProduct(this.vertices[index < this.vertices.length - 1 ? index + 1 : 0], vertex));
+        }, 0);
+
+        
+        this._momentOfInertia = this._mass * numerator / (6 * denomiator);
     }
 
 
@@ -529,15 +556,22 @@ export class Polygon extends BaseRigidBody {
         return adjacentFacesWithIndex;
     }
 
+    get momentOfInertia(): number {
+        return this._momentOfInertia;
+    }
+
 }
 
 export class Circle extends BaseRigidBody {
 
     private _radius: number;
+    private _momentOfInertia: number;
+
     constructor(center: Point = {x: 0, y: 0}, radius: number, orientationAngle: number = 0, mass: number = 50, isStatic: boolean = false, frictionEnabled: boolean = true) {
         super(center, orientationAngle, mass, isStatic, frictionEnabled);
         this._radius = radius;
         this.step = this.step.bind(this);
+        this._momentOfInertia = this._mass * this._radius * this._radius / 2;
     }
 
     getMinMaxProjection(unitvector: Point): { min: number; max: number; } {
@@ -572,5 +606,9 @@ export class Circle extends BaseRigidBody {
 
     getAdjacentFaces(collisionNormal: Point): {startPoint: {coord: Point, index: number}, endPoint: {coord: Point, index: number}}[]{
         return [];
+    }
+
+    get momentOfInertia(): number {
+        return this._momentOfInertia;
     }
 }

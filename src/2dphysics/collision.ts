@@ -28,6 +28,60 @@ export function resolveCollision(bodyA: RigidBody, bodyB: RigidBody, normal: Poi
     bodyA.linearVelocity = PointCal.addVector(bodyA.linearVelocity, deltaVelocityA);
     bodyB.linearVelocity = PointCal.subVector(bodyB.linearVelocity, deltaVelocityB);
 }
+export function resolveCollisionWithRotation(bodyA: RigidBody, bodyB: RigidBody, contactManifold: {normal: Point, contactPoints: Point[]}){
+    // console.log("resolve");
+    if (bodyA.isStatic() && bodyB.isStatic()) {
+        return;
+    }
+
+    let restitution = 0.4;
+    let inverseMassA = bodyA.isStatic() || bodyA.isMovingStatic() ? 0 : 1 / bodyA.mass;
+    let inverseMassB = bodyB.isStatic() || bodyB.isMovingStatic() ? 0 : 1 / bodyB.mass;
+
+    let inverseMMOIA = bodyA.isStatic() || bodyA.isMovingStatic() ? 0 : 1 / bodyA.momentOfInertia;
+    let inverseMMOIB = bodyB.isStatic() || bodyB.isMovingStatic() ? 0 : 1 / bodyB.momentOfInertia;
+
+    const Js: Point[] = [];
+    for(let index = 0; index < contactManifold.contactPoints.length; index++){
+        const contactPoint = contactManifold.contactPoints[index];
+        const rA = PointCal.subVector(contactPoint, bodyA.center);
+        const rB = PointCal.subVector(contactPoint, bodyB.center);
+        const rAPerpendicular = {x: -rA.y, y: rA.x};
+        const rBPerpendicular = {x: -rB.y, y: rB.x}; 
+
+        const angularVelocityA = PointCal.multiplyVectorByScalar(rAPerpendicular, bodyA.angularVelocity);
+        const angularVelocityB = PointCal.multiplyVectorByScalar(rBPerpendicular, bodyB.angularVelocity);
+
+        // console.log("inverse mass a", inverseMassA);
+        // console.log("inverse mass b", inverseMassB);
+
+        let relativeVelocity = PointCal.subVector(PointCal.addVector(bodyA.linearVelocity, angularVelocityA), PointCal.addVector(bodyB.linearVelocity, angularVelocityB));
+        // console.log("relative velocity: ", relativeVelocity);
+        // console.log("linear velocity of a", bodyA.getLinearVelocity());
+        // console.log("linear veolcity of b", bodyB.getLinearVelocity());
+        let relativeVelocityNormal = PointCal.dotProduct(relativeVelocity, contactManifold.normal);
+        const rAPerpendicularNormal = PointCal.dotProduct(rAPerpendicular, contactManifold.normal);
+        const rBPerpendicularNormal = PointCal.dotProduct(rBPerpendicular, contactManifold.normal);
+        
+        const denominator = inverseMassA + inverseMassB + rAPerpendicularNormal * rAPerpendicularNormal * inverseMMOIA + rBPerpendicularNormal * rBPerpendicularNormal * inverseMMOIB;
+        let J = -(1 + restitution) * relativeVelocityNormal;
+        J /= denominator;
+
+        J /= contactManifold.contactPoints.length;
+
+        Js.push(PointCal.multiplyVectorByScalar(contactManifold.normal, J));
+    }
+
+    Js.forEach((impulse, index) => {
+        let deltaVelocityA = PointCal.multiplyVectorByScalar(impulse, inverseMassA);
+        let deltaVelocityB = PointCal.multiplyVectorByScalar(impulse, inverseMassB);
+
+        bodyA.linearVelocity = PointCal.addVector(bodyA.linearVelocity, deltaVelocityA);
+        bodyA.angularVelocity += PointCal.crossProduct(PointCal.subVector(contactManifold.contactPoints[index], bodyA.center), impulse).z * inverseMMOIA;
+        bodyB.angularVelocity -= PointCal.crossProduct(PointCal.subVector(contactManifold.contactPoints[index], bodyB.center), impulse).z * inverseMMOIB;
+        bodyB.linearVelocity = PointCal.subVector(bodyB.linearVelocity, deltaVelocityB);
+    });
+}
 
 export function aabbIntersects(aabbA: {min: Point, max: Point}, aabbB: {min: Point, max: Point}): boolean{
     if ((aabbA.min.x <= aabbB.max.x && aabbB.min.x <= aabbA.max.x) && (aabbA.min.y <= aabbB.max.y && aabbB.min.y <= aabbA.max.y)) {
@@ -210,7 +264,8 @@ export function narrowPhaseWithRigidBody(bodies: RigidBody[], combinationsToChec
                 }
             }
             if (resolveCollisionFlag) {
-                resolveCollision(bodyA, bodyB, normalAxis);
+                resolveCollisionWithRotation(bodyA, bodyB, {normal: normalAxis, contactPoints: contactPoints});
+                // resolveCollision(bodyA, bodyB, normalAxis);
             }
         }
     });

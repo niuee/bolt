@@ -57,7 +57,7 @@ export class World {
         }
         rigidBodyList.forEach(rigidBody => {
             rigidBody.step(deltaTime);
-        })
+        });
     }
 
     getRigidBodyList(){
