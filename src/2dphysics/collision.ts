@@ -28,6 +28,7 @@ export function resolveCollision(bodyA: RigidBody, bodyB: RigidBody, normal: Poi
     bodyA.linearVelocity = PointCal.addVector(bodyA.linearVelocity, deltaVelocityA);
     bodyB.linearVelocity = PointCal.subVector(bodyB.linearVelocity, deltaVelocityB);
 }
+
 export function resolveCollisionWithRotation(bodyA: RigidBody, bodyB: RigidBody, contactManifold: {normal: Point, contactPoints: Point[]}){
     // console.log("resolve");
     if (bodyA.isStatic() && bodyB.isStatic()) {
@@ -136,6 +137,11 @@ export function narrowPhaseWithRigidBody(bodies: RigidBody[], combinationsToChec
         let bodyA = combination.bodyA;
         let bodyB = combination.bodyB;
         if (bodyA == bodyB) {
+            return;
+        }
+        let bodyAZ = bodyA.center.z == undefined ? 0 : bodyA.center.z;
+        let bodyBZ = bodyB.center.z == undefined ? 0 : bodyB.center.z;
+        if(Math.abs(bodyAZ - bodyBZ) > 0.5){
             return;
         }
         let {collision, depth, normal: normalAxis} = intersects(bodyA, bodyB);
