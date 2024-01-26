@@ -124,13 +124,17 @@ export abstract class BaseRigidBody implements RigidBody{
             if (this.isStatic()  || 
                 (this.linearVelocity.x == 0 && 
                  this.linearVelocity.y == 0 && 
-                 PointCal.magnitude(PointCal.subVector(this.force, {x: 0, y: 0})) >= 0 && 
-                 PointCal.magnitude(this.force) < this.staticFrictionCoeff * this.mass * 9.81)
+                 PointCal.magnitude(PointCal.subVector({x: this.force.x, y: this.force.y}, {x: 0, y: 0})) >= 0 && 
+                 PointCal.magnitude({x: this.force.x, y: this.force.y}) < this.staticFrictionCoeff * this.mass * 9.81)
                 ) {
-                this.force = {x: 0, y: 0};
+                if (this.force.z != undefined) {
+                    this.force = {x: 0, y: 0, z: this.force.z};
+                } else {
+                    this.force = {x: 0, y: 0};
+                }
                 // return;
             } else {
-                let kineticFrictionDirection = PointCal.multiplyVectorByScalar(PointCal.unitVector(this._linearVelocity), -1);
+                let kineticFrictionDirection = PointCal.multiplyVectorByScalar(PointCal.unitVector({x: this._linearVelocity.x, y: this._linearVelocity.y}), -1);
                 let kineticFriction = PointCal.multiplyVectorByScalar(kineticFrictionDirection, this.dynamicFrictionCoeff * this.mass * 9.81);
                 this.force = PointCal.addVector(this.force, kineticFriction);
             }
@@ -144,11 +148,20 @@ export abstract class BaseRigidBody implements RigidBody{
             this._angularVelocity += angularDamping;
         }
         this.orientationAngle += this._angularVelocity * deltaTime;
-        if (PointCal.magnitude(this._linearVelocity) < PointCal.magnitude(PointCal.divideVectorByScalar(PointCal.multiplyVectorByScalar(this.force, deltaTime), this.mass))){
-            this._linearVelocity = {x: 0, y: 0};
+        if (PointCal.magnitude({x: this._linearVelocity.x, y: this._linearVelocity.y}) < PointCal.magnitude(PointCal.divideVectorByScalar(PointCal.multiplyVectorByScalar(this.force, deltaTime), this.mass))){
+            if (this._linearVelocity.z != undefined) {
+                this._linearVelocity = {x: 0, y: 0, z: this._linearVelocity.z};
+            } else {
+                this._linearVelocity = {x: 0, y: 0};
+            }
         }
+        const gravitationalForce = -9.81 * this._mass;
+        this.force = PointCal.addVector(this.force, {x: 0, y: 0, z: gravitationalForce});
         this._linearVelocity = PointCal.addVector(this._linearVelocity, PointCal.divideVectorByScalar(PointCal.multiplyVectorByScalar(this.force, deltaTime), this.mass));
         this._center = PointCal.addVector(this._center, PointCal.multiplyVectorByScalar(this._linearVelocity, deltaTime));
+        if (this._center.z != undefined && this._center.z < 0) {
+            this._center.z = 0;
+        }
         this.force = {x: 0, y: 0};
     }
 
