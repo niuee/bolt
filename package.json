@@ -1,5 +1,5 @@
 {
-  "name": "@niuee/vphysics",
+  "name": "@niuee/bolt",
   "version": "0.0.1",
   "description": "",
   "main": "./build/cjs/index.js",
