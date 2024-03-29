@@ -118,19 +118,18 @@ export default [
     {
       file: 'dist/bolt.js',
       format: 'esm',
-      name: 'board',
       sourcemap: true,
     },
     {
       file: 'build/umd/index.js',
       format: 'umd',
-      name: "Board",
+      name: "Bolt",
       sourcemap: true
     },
     {
       file: 'build/iife/index.js',
       format: 'iife',
-      name: "Board",
+      name: "Bolt",
       sourcemap: true
     }
     ],
