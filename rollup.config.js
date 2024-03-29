@@ -1,46 +1,7 @@
-// // rollup.config.js
-// import typescript from '@rollup/plugin-typescript';
-// import resolve from '@rollup/plugin-node-resolve';
-// import dts from "rollup-plugin-dts";
-// import terser from "@rollup/plugin-terser";
-
-// const packageJson = require("./package.json");
-
-// export default [{
-//   input: 'src/index.ts',
-//   output: [{
-//     file: packageJson.main,
-//     format: 'cjs',
-//     sourcemap: true,
-//   },  
-//   {
-//     file: packageJson.module,
-//     format: 'esm',
-//     sourcemap: true,
-//   }
-//   ],
-//   plugins: [
-//     typescript(),
-//     resolve(),
-//     terser({
-//       mangle: false
-//     }),
-//   ],
-// },
-// {
-//     input: "src/index.ts",
-//     output: [{ file: "build/types.d.ts", format: "es" }],
-//     plugins: [dts.default()],
-//   } 
-// ];
-
-// rollup.config.js
 import typescript from '@rollup/plugin-typescript';
-// import typescript from 'rollup-plugin-typescript2';
 import resolve from '@rollup/plugin-node-resolve';
 import dts from "rollup-plugin-dts";
 import terser from "@rollup/plugin-terser";
-// import generatePackageJson from 'rollup-plugin-generate-package-json';
 import path from 'path';
 const packageJson = require("./package.json");
 
@@ -106,30 +67,6 @@ const folderBuilds = getComponentsFoldersRecursive('./src').map((folder) => {
   };
 });
 
-// const packageJsonFile = getComponentsFolders('./src').map((folder) => {
-//   return {
-//     input: `src/${folder}/index.ts`,
-//     output: {
-//       file: `build/${folder}/cjs/index.js`,
-//       sourcemap: true,
-//       format: 'cjs',
-//     },
-//     plugins: [
-//       resolve(),
-//       typescript(),
-//       generatePackageJson({
-//         outputFolder: `build/${folder}`,
-//         baseContents: {
-//           name: `${packageJson.name}/${folder}`,
-//           private: true,
-//           main: "./cjs/index.js", // --> points to cjs format entry point of whole library
-//           module: "./esm/index.js", // --> points to esm format entry point of individual component
-//           types: "./index.d.ts", // --> points to types definition file of individual component
-//         },
-//      }),
-//     ],
-//   };
-// });
 
 const types = getComponentsFoldersRecursive('./src').map((folder) => {
   return {
@@ -144,15 +81,9 @@ const types = getComponentsFoldersRecursive('./src').map((folder) => {
   };
 
 });
-// folderBuilds.push(...types);
-
-
-// console.log(folderBuilds);
 
 export default [
   ...folderBuilds,
-  // ...types,
-  // ...packageJsonFile,
   {
     input: 'src/index.ts',
     output: [{
