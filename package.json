@@ -1,12 +1,14 @@
 {
   "name": "@niuee/bolt",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "",
-  "main": "./build/cjs/index.js",
-  "module": "./build/esm/index.js",
-  "types": "./build/types.d.ts",
+  "main": "./build/index.cjs",
+  "module": "./build/index.mjs",
+  "types": "./build/index.d.ts",
   "scripts": {
-    "build": "rollup -c --bundleConfigAsCjs",
+    "build": "pnpm run rollup && pnpm run move-package",
+    "rollup": "rollup -c --bundleConfigAsCjs",
+    "move-package": "node ./scripts/move-package.mjs",
     "test": "jest"
   },
   "author": "",
