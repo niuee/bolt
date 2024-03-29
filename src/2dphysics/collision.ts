@@ -78,8 +78,12 @@ export function resolveCollisionWithRotation(bodyA: RigidBody, bodyB: RigidBody,
         let deltaVelocityB = PointCal.multiplyVectorByScalar(impulse, inverseMassB);
 
         bodyA.linearVelocity = PointCal.addVector(bodyA.linearVelocity, deltaVelocityA);
-        bodyA.angularVelocity += PointCal.crossProduct(PointCal.subVector(contactManifold.contactPoints[index], bodyA.center), impulse).z * inverseMMOIA;
-        bodyB.angularVelocity -= PointCal.crossProduct(PointCal.subVector(contactManifold.contactPoints[index], bodyB.center), impulse).z * inverseMMOIB;
+        let resA = PointCal.crossProduct(PointCal.subVector(contactManifold.contactPoints[index], bodyA.center), impulse).z;
+        resA = resA == undefined ? 0 : resA;
+        let resB = PointCal.crossProduct(PointCal.subVector(contactManifold.contactPoints[index], bodyB.center), impulse).z;
+        resB = resB == undefined ? 0 : resB;
+        bodyA.angularVelocity += resA * inverseMMOIA;
+        bodyB.angularVelocity -= resB * inverseMMOIB;
         bodyB.linearVelocity = PointCal.subVector(bodyB.linearVelocity, deltaVelocityB);
     });
 }

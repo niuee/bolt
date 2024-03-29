@@ -21,8 +21,8 @@ devDependencies:
     specifier: ^29.7.0
     version: 29.7.0
   point2point:
-    specifier: ../point2point
-    version: link:../point2point
+    specifier: ^0.0.95
+    version: 0.0.95
   rollup:
     specifier: ^4.7.0
     version: 4.12.0
@@ -2212,6 +2212,10 @@ packages:
     engines: {node: '>=8'}
     dependencies:
       find-up: 4.1.0
+    dev: true
+
+  /point2point@0.0.95:
+    resolution: {integrity: sha512-8aahc+BLo86ZnUSQbPlCcqBW3MINnxmVqmfs3qORtNwTJKLlocZkqujB07H9PbmINRqV8R5G3R3KJlMTrXnImQ==}
     dev: true
 
   /pretty-format@29.7.0:
