@@ -41,10 +41,11 @@ export class World {
             rigidBodyList.push(body);
             this.quadTree.insert(body);
         });
+        // console.log("quadtree size: ", this.quadTree);
         let possibleCombinations = Collision.broadPhaseWithRigidBodyReturned(this.quadTree, rigidBodyList);
         let contactPoints = Collision.narrowPhaseWithRigidBody(rigidBodyList, possibleCombinations, this.resolveCollision);
-        
         if(this._context != null){
+            this.quadTree.draw(this._context);
             contactPoints.forEach((contactPoint) => {
                 if(this._context != null){
                     this._context.lineWidth = 1;

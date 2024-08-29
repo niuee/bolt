@@ -217,7 +217,7 @@ export class VisaulCircleBody implements VisualComponent, RigidBody {
         ctx.strokeStyle = "black";
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(this._circle.center.x, -this._circle.center.y, this._circle.radius, 0, 2 * Math.PI);
+        ctx.arc(this._circle.center.x, this._circle.center.y, this._circle.radius, 0, 2 * Math.PI);
         ctx.stroke();
     }
 
@@ -335,11 +335,14 @@ export class VisualPolygonBody implements VisualComponent, RigidBody {
         ctx.lineWidth = 1;
         ctx.beginPath();
         let vertices = this._polygon.getVerticesAbsCoord();
-        ctx.moveTo(vertices[0].x, -vertices[0].y);
+        ctx.moveTo(vertices[0].x, vertices[0].y);
         vertices.forEach(vertex => {
-            ctx.lineTo(vertex.x, -vertex.y);
+            ctx.lineTo(vertex.x, vertex.y);
         });
-        ctx.lineTo(vertices[0].x, -vertices[0].y);
+        ctx.lineTo(vertices[0].x, vertices[0].y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.rect(this._polygon.AABB.min.x, this._polygon.AABB.min.y, this._polygon.AABB.max.x - this._polygon.AABB.min.x, this._polygon.AABB.max.y - this._polygon.AABB.min.y);
         ctx.stroke();
     }
 

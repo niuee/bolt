@@ -141,11 +141,13 @@ export function narrowPhaseWithRigidBody(bodies: RigidBody[], combinationsToChec
         let bodyA = combination.bodyA;
         let bodyB = combination.bodyB;
         if (bodyA == bodyB) {
+            // console.log("same body");
             return;
         }
         let bodyAZ = bodyA.center.z == undefined ? 0 : bodyA.center.z;
         let bodyBZ = bodyB.center.z == undefined ? 0 : bodyB.center.z;
         if(Math.abs(bodyAZ - bodyBZ) > 0.5){
+            // console.log("z-index difference is too large");
             return;
         }
         let {collision, depth, normal: normalAxis} = intersects(bodyA, bodyB);

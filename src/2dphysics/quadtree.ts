@@ -34,12 +34,26 @@ export class QuadTree {
     private objects: RigidBody[] = [];
     private nodes: (QuadTree | undefined)[] = [];
     private bounds: RectangleBound;
+    
 
     constructor(level: number, bounds: RectangleBound){
         this.level = level;
         this.objects = [];
         this.bounds = bounds;
         this.nodes = [undefined, undefined, undefined, undefined];
+    }
+
+    draw(context: CanvasRenderingContext2D){
+        context.beginPath();
+        context.rect(this.bounds.getbottomLeft().x, this.bounds.getbottomLeft().y, this.bounds.getWidth(), this.bounds.getHeight());
+        context.stroke();
+        // console.log("objects: ", this.objects.length, "level: ", this.level);
+        for(let index = 0; index < this.nodes.length; index++){
+            let node = this.nodes[index];
+            if(node != undefined){
+                node.draw(context);
+            }
+        }
     }
 
     clear(){
@@ -54,6 +68,7 @@ export class QuadTree {
     }
 
     split(){
+        // console.log("split");
         let subWidth = this.bounds.getWidth() / 2;
         let subHeight = this.bounds.getHeight() / 2;
         let bottomLeft = this.bounds.getbottomLeft();
@@ -82,6 +97,7 @@ export class QuadTree {
                 return 2;
             }
         }
+        // console.log("level", this.level);
         return -1;
     }
 
@@ -89,15 +105,17 @@ export class QuadTree {
         let node = this.nodes[0];
         if (node != undefined){
             let index = this.getIndex(vBody);
+
             if (index !== -1){
-                node.insert(vBody);
+                node = this.nodes[index];
+                node?.insert(vBody);
                 return;
             }
         }
 
         this.objects.push(vBody);
         if(this.objects.length > this.MAX_OBJECTS && this.level < this.MAX_LEVELS){
-            if (this.nodes[0] == null){
+            if (this.nodes[0] == null || this.nodes[0] == undefined){
                 this.split();
             }
             let i = 0;
