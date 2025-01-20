@@ -2,14 +2,19 @@ import { BaseRigidBody, RigidBody } from "./rigidbody";
 import * as Collision from "./collision";
 import { RectangleBound, QuadTree} from "./quadtree"
 import { Point } from "point2point";
+import { Constraint } from "./constraints";
+import { PinJointConstraint, solvePinJointConstraint } from "./constraints";
+
 export class World {
     private rigidBodyList: RigidBody[];
     private rigidBodyMap: Map<string, RigidBody>;
-    private resolveCollision: boolean;
+    private _resolveCollision: boolean;
     private maxTransWidth: number;
     private maxTransHeight: number;
     private bound: RectangleBound;
     private quadTree: QuadTree;
+    private constraints: Constraint[];
+    private pinJoints: PinJointConstraint[] = [];
     _context: CanvasRenderingContext2D | null = null;
 
     constructor(maxTransWidth: number, maxTransHeight: number){
@@ -19,7 +24,8 @@ export class World {
         this.quadTree = new QuadTree(0, this.bound);
         this.rigidBodyList = [];
         this.rigidBodyMap = new Map<string, RigidBody>();
-        this.resolveCollision = true;
+        this._resolveCollision = true;
+        this.constraints = [];
     }
 
     addRigidBody(ident: string, body: RigidBody): void{
@@ -34,7 +40,28 @@ export class World {
     }
 
     step(deltaTime: number): void{
-        // console.log("stepping in world");
+        if(this._resolveCollision){
+            const contactPoints = this.resolveCollisionPhase();
+        }
+        // if(this._context != null){
+        //     this.quadTree.draw(this._context);
+        //     contactPoints.forEach((contactPoint) => {
+        //         if(this._context != null){
+        //             this._context.lineWidth = 1;
+        //             this._context.strokeStyle = "red";
+        //         }
+        //         this._context?.beginPath();
+        //         this._context?.arc(contactPoint.x, contactPoint.y, 3, 0, 2 * Math.PI);
+        //         this._context?.stroke();
+        //     });
+        // }
+        this.constraints.forEach(constraint => constraint.enforce(deltaTime));
+        this.getRigidBodyList().forEach(rigidBody => {
+            rigidBody.step(deltaTime);
+        });
+    }
+
+    resolveCollisionPhase(): Point[]{
         let rigidBodyList: RigidBody[] = [];
         this.quadTree.clear();
         this.rigidBodyMap.forEach((body) => {
@@ -43,22 +70,16 @@ export class World {
         });
         // console.log("quadtree size: ", this.quadTree);
         let possibleCombinations = Collision.broadPhaseWithRigidBodyReturned(this.quadTree, rigidBodyList);
-        let contactPoints = Collision.narrowPhaseWithRigidBody(rigidBodyList, possibleCombinations, this.resolveCollision);
-        if(this._context != null){
-            this.quadTree.draw(this._context);
-            contactPoints.forEach((contactPoint) => {
-                if(this._context != null){
-                    this._context.lineWidth = 1;
-                    this._context.strokeStyle = "red";
-                }
-                this._context?.beginPath();
-                this._context?.arc(contactPoint.x, -contactPoint.y, 3, 0, 2 * Math.PI);
-                this._context?.stroke();
-            });
-        }
-        rigidBodyList.forEach(rigidBody => {
-            rigidBody.step(deltaTime);
-        });
+        let contactPoints = Collision.narrowPhaseWithRigidBody(rigidBodyList, possibleCombinations, this._resolveCollision);
+        return contactPoints;
+    }
+
+    get resolveCollision(): boolean{
+        return this._resolveCollision;
+    }
+
+    set resolveCollision(resolveCollision: boolean){
+        this._resolveCollision = resolveCollision;
     }
 
     getRigidBodyList(){
@@ -79,5 +100,17 @@ export class World {
 
     setMaxTransWidth(width: number){
         this.maxTransWidth = width;
+    }
+
+    addConstraint(constraint: Constraint): void{
+        this.constraints.push(constraint);
+    }
+
+    getConstraints(): Constraint[]{
+        return this.constraints;
+    }
+
+    addPinJoint(bodyA: RigidBody, bodyB: RigidBody, anchorA: Point, anchorB: Point) {
+        this.pinJoints.push({ bodyA, bodyB, anchorA, anchorB });
     }
 }

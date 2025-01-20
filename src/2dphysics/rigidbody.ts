@@ -2,6 +2,7 @@ import { PointCal, Point } from "point2point";
 
 export interface RigidBody {
     center: Point;
+    orientationAngle: number;
     linearVelocity: Point;
     angularVelocity: number;
     AABB: {min: Point, max: Point};
@@ -15,6 +16,7 @@ export interface RigidBody {
     getCollisionAxes(relativeBody: RigidBody): Point[];
     applyForce(force: Point): void;
     applyForceInOrientation(force: Point): void;
+    // applyForceAtPoint(force: Point, point: Point): void;
     move(delta: Point): void;
     significantVertex(collisionNormal: Point): Point;
     getSignificantVertices(collisionNormal: Point): Point[];
@@ -32,7 +34,7 @@ export abstract class BaseRigidBody implements RigidBody{
     protected _mass: number = 50;
     protected _linearVelocity: Point;
     protected _angularVelocity: number; // in radians
-    protected orientationAngle: number = 0;
+    protected _orientationAngle: number = 0;
     protected linearAcceleartion: Point;
     protected force: Point;
     protected isStaticBody: boolean = false;
@@ -43,9 +45,9 @@ export abstract class BaseRigidBody implements RigidBody{
     protected angularDampingFactor: number = 0.005;
     
 
-    constructor(center: Point, orientationAngle: number = 0, mass: number = 50, isStaticBody: boolean = false, frictionEnabled: boolean = false){
+    constructor(center: Point, _orientationAngle: number = 0, mass: number = 50, isStaticBody: boolean = false, frictionEnabled: boolean = false){
         this._center = center;
-        this.orientationAngle = orientationAngle;
+        this._orientationAngle = _orientationAngle;
         this._mass = mass;
         this.isStaticBody = isStaticBody;
         this.frictionEnabled = frictionEnabled;
@@ -62,15 +64,15 @@ export abstract class BaseRigidBody implements RigidBody{
     }
 
     rotateRadians(angle: number): void {
-        this.orientationAngle += angle;
+        this._orientationAngle += angle;
     }
 
     getCenter(): Point {
         return this._center;
     }
-    
+
     getOrientationAngle(): number{
-        return this.orientationAngle;
+        return this._orientationAngle;
     }
 
     get angularVelocity(): number{
@@ -79,6 +81,10 @@ export abstract class BaseRigidBody implements RigidBody{
 
     set angularVelocity(angularVelocity: number){
         this._angularVelocity = angularVelocity;
+    }
+
+    get orientationAngle(): number{
+        return this._orientationAngle;
     }
 
     isStatic(): boolean{
@@ -98,7 +104,7 @@ export abstract class BaseRigidBody implements RigidBody{
     }
 
     setOrientationAngle(angle: number): void{
-        this.orientationAngle = angle;
+        this._orientationAngle = angle;
     }
 
     applyForce(force: Point): void {
@@ -112,9 +118,9 @@ export abstract class BaseRigidBody implements RigidBody{
     applyForceInOrientation(force: Point | number): void {
         let forceTransformed: Point;
         if (typeof force === "number") {
-            forceTransformed = PointCal.rotatePoint({x: force, y: 0}, this.orientationAngle);
+            forceTransformed = PointCal.rotatePoint({x: force, y: 0}, this._orientationAngle);
         } else {
-            forceTransformed = PointCal.rotatePoint(force, this.orientationAngle);
+            forceTransformed = PointCal.rotatePoint(force, this._orientationAngle);
         }
         this.applyForce(forceTransformed);
     }
@@ -147,7 +153,7 @@ export abstract class BaseRigidBody implements RigidBody{
         } else {
             this._angularVelocity += angularDamping;
         }
-        this.orientationAngle += this._angularVelocity * deltaTime;
+        this._orientationAngle += this._angularVelocity * deltaTime;
         if (PointCal.magnitude({x: this._linearVelocity.x, y: this._linearVelocity.y}) < PointCal.magnitude(PointCal.divideVectorByScalar(PointCal.multiplyVectorByScalar(this.force, deltaTime), this.mass))){
             if (this._linearVelocity.z != undefined) {
                 this._linearVelocity = {x: 0, y: 0, z: this._linearVelocity.z};
@@ -208,14 +214,12 @@ export class VisaulCircleBody implements VisualComponent, RigidBody {
     private _circle: Circle;
     private _context: CanvasRenderingContext2D;
 
-    constructor(center: Point = {x: 0, y: 0}, radius: number, drawingContext: CanvasRenderingContext2D, orientationAngle: number = 0, mass: number = 50, isStatic: boolean = false, frictionEnabled: boolean = true) {
-        this._circle = new Circle(center, radius, orientationAngle, mass, isStatic, frictionEnabled);
+    constructor(center: Point = {x: 0, y: 0}, radius: number, drawingContext: CanvasRenderingContext2D, _orientationAngle: number = 0, mass: number = 50, isStatic: boolean = false, frictionEnabled: boolean = true) {
+        this._circle = new Circle(center, radius, _orientationAngle, mass, isStatic, frictionEnabled);
         this._context = drawingContext;
     }
 
     draw(ctx: CanvasRenderingContext2D): void {
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.arc(this._circle.center.x, this._circle.center.y, this._circle.radius, 0, 2 * Math.PI);
         ctx.stroke();
@@ -282,6 +286,10 @@ export class VisaulCircleBody implements VisualComponent, RigidBody {
         this._circle.linearVelocity = dest;
     }
 
+    get orientationAngle(){
+        return this._circle.orientationAngle;
+    }
+
     significantVertex(collisionNormal: Point): Point {
         return this._circle.significantVertex(collisionNormal);
     }
@@ -325,14 +333,12 @@ export class VisualPolygonBody implements VisualComponent, RigidBody {
     private _polygon: Polygon;
     private _context: CanvasRenderingContext2D;
 
-    constructor(center: Point = {x: 0, y: 0}, vertices: Point[], drawingContext: CanvasRenderingContext2D, orientationAngle: number = 0, mass: number = 50, isStatic: boolean = false, frictionEnabled: boolean = true) {
-        this._polygon = new Polygon(center, vertices, orientationAngle, mass, isStatic, frictionEnabled);
+    constructor(center: Point = {x: 0, y: 0}, vertices: Point[], drawingContext: CanvasRenderingContext2D, _orientationAngle: number = 0, mass: number = 50, isStatic: boolean = false, frictionEnabled: boolean = true) {
+        this._polygon = new Polygon(center, vertices, _orientationAngle, mass, isStatic, frictionEnabled);
         this._context = drawingContext;
     }
 
     draw(ctx: CanvasRenderingContext2D): void {
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 1;
         ctx.beginPath();
         let vertices = this._polygon.getVerticesAbsCoord();
         ctx.moveTo(vertices[0].x, vertices[0].y);
@@ -341,9 +347,9 @@ export class VisualPolygonBody implements VisualComponent, RigidBody {
         });
         ctx.lineTo(vertices[0].x, vertices[0].y);
         ctx.stroke();
-        ctx.beginPath();
-        ctx.rect(this._polygon.AABB.min.x, this._polygon.AABB.min.y, this._polygon.AABB.max.x - this._polygon.AABB.min.x, this._polygon.AABB.max.y - this._polygon.AABB.min.y);
-        ctx.stroke();
+        // ctx.beginPath();
+        // ctx.rect(this._polygon.AABB.min.x, this._polygon.AABB.min.y, this._polygon.AABB.max.x - this._polygon.AABB.min.x, this._polygon.AABB.max.y - this._polygon.AABB.min.y);
+        // ctx.stroke();
     }
 
     step(deltaTime: number): void {
@@ -407,6 +413,10 @@ export class VisualPolygonBody implements VisualComponent, RigidBody {
         this._polygon.angularVelocity = angularVelocity;
     }
 
+    get orientationAngle(): number{
+        return this._polygon.orientationAngle;
+    }
+
     significantVertex(collisionNormal: Point): Point {
         return this._polygon.significantVertex(collisionNormal);
     }
@@ -449,8 +459,8 @@ export class Polygon extends BaseRigidBody {
     private vertices: Point[];
     private _momentOfInertia: number;
 
-    constructor(center: Point = {x: 0, y: 0}, vertices: Point[], orientationAngle: number = 0, mass: number = 50, isStatic: boolean = false, frictionEnabled: boolean = true) {
-        super(center, orientationAngle, mass, isStatic, frictionEnabled);
+    constructor(center: Point = {x: 0, y: 0}, vertices: Point[], _orientationAngle: number = 0, mass: number = 50, isStatic: boolean = false, frictionEnabled: boolean = true) {
+        super(center, _orientationAngle, mass, isStatic, frictionEnabled);
         this.vertices = vertices;
         this.step = this.step.bind(this);
 
@@ -472,7 +482,7 @@ export class Polygon extends BaseRigidBody {
 
     getVerticesAbsCoord(): Point[]{
         return this.vertices.map(vertex=>{
-            return PointCal.addVector(this._center, PointCal.rotatePoint(vertex, this.orientationAngle));
+            return PointCal.addVector(this._center, PointCal.rotatePoint(vertex, this._orientationAngle));
         });
     }
 
@@ -583,8 +593,8 @@ export class Circle extends BaseRigidBody {
     private _radius: number;
     private _momentOfInertia: number;
 
-    constructor(center: Point = {x: 0, y: 0}, radius: number, orientationAngle: number = 0, mass: number = 50, isStatic: boolean = false, frictionEnabled: boolean = true) {
-        super(center, orientationAngle, mass, isStatic, frictionEnabled);
+    constructor(center: Point = {x: 0, y: 0}, radius: number, _orientationAngle: number = 0, mass: number = 50, isStatic: boolean = false, frictionEnabled: boolean = true) {
+        super(center, _orientationAngle, mass, isStatic, frictionEnabled);
         this._radius = radius;
         this.step = this.step.bind(this);
         this._momentOfInertia = this._mass * this._radius * this._radius / 2;
